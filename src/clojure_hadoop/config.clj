@@ -299,9 +299,9 @@
   (when-not (even? (count args))
     (throw (IllegalArgumentException. "Number of options must be even.")))
   (doseq [[k v] (partition 2 args)]
-    (conf job (keyword (replace-re #"^:|-" "" k)) v))
+    (conf job (keyword (replace-re #"^:|-" "" k)) v)))
 
-  (defn print-usage []
+(defn print-usage []
     (println "Usage: java -cp [jars...] clojure_hadoop.job [options...]
 Required options are:
  -input     comma-separated input paths
@@ -332,6 +332,4 @@ Other available options are:
  -replace           If \"true\", deletes output dir before start
  -compress-output   If \"true\", compress job output files
  -output-compressor Compression class or \"gzip\",\"bzip2\",\"default\"
- -compression-type  For seqfiles, compress \"block\",\"record\",\"none\"
-")))
-
+ -compression-type  For seqfiles, compress \"block\",\"record\",\"none\""))
