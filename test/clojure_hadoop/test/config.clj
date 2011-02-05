@@ -223,3 +223,7 @@
   (let [job (Job.)]
     (parse-command-line-args job ["replace" "true"])
     (is (= (.get (configuration job) "clojure-hadoop.job.replace") "true"))))
+
+(deftest test-print-usage
+  (let [out (with-out-str (print-usage))]
+    (is (re-find #"Usage.*" out))))

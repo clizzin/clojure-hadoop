@@ -74,6 +74,12 @@
 (defmethod conf :params [^Job job key params]
   (set-parameters job (var-get (resolve (read-string params)))))
 
+;; Modify the job or configuration 
+(defmethod conf :configure [^Job job key fname]
+  (println "Running configuration function " fname)
+  (println job)
+  ((load/load-name fname) job))
+
 (defmethod conf :name [^Job job key value]
   (.setJobName job value))
 
@@ -95,14 +101,14 @@
 (defmethod conf :map [^Job job key value]
   (let [value (as-str value)]
     (cond
-      (= "identity" value)
-      (.setMapperClass job Mapper)
+     (= "identity" value)
+     (.setMapperClass job Mapper)
 
-      (.contains value "/")
-      (.set (configuration job) "clojure-hadoop.job.map" value)
+     (.contains value "/")
+     (.set (configuration job) "clojure-hadoop.job.map" value)
 
-      :else
-      (.setMapperClass job (Class/forName value)))))
+     :else
+     (.setMapperClass job (Class/forName value)))))
 
 ;; The name of the mapper cleanup function as namespace/symbol.
 (defmethod conf :map-cleanup [^Job job key value]
@@ -122,17 +128,17 @@
 (defmethod conf :reduce [^Job job key value]
   (let [value (as-str value)]
     (cond
-      (= "identity" value)
-      (.setReducerClass job Reducer)
+     (= "identity" value)
+     (.setReducerClass job Reducer)
 
-      (= "none" value)
-      (.setNumReduceTasks job 0)
+     (= "none" value)
+     (.setNumReduceTasks job 0)
 
-      (.contains value "/")
-      (.set (configuration job) "clojure-hadoop.job.reduce" value)
+     (.contains value "/")
+     (.set (configuration job) "clojure-hadoop.job.reduce" value)
 
-      :else
-      (.setReducerClass job (Class/forName value)))))
+     :else
+     (.setReducerClass job (Class/forName value)))))
 
 ;; The name of the reducer cleanup function as namespace/symbol.
 (defmethod conf :reduce-cleanup [^Job job key value]
@@ -225,28 +231,28 @@
 (defmethod conf :input-format [^Job job key value]
   (let [val (as-str value)]
     (cond
-      (= "text" val)
-      (.setInputFormatClass job TextInputFormat)
+     (= "text" val)
+     (.setInputFormatClass job TextInputFormat)
 
-      (= "seq" val)
-      (.setInputFormatClass job SequenceFileInputFormat)
+     (= "seq" val)
+     (.setInputFormatClass job SequenceFileInputFormat)
 
-      :else
-      (.setInputFormatClass job (Class/forName value)))))
+     :else
+     (.setInputFormatClass job (Class/forName value)))))
 
 ;; The output file format.  May be a class name or "text" for
 ;; TextOutputFormat, "seq" for SequenceFileOutputFormat.
 (defmethod conf :output-format [^Job job key value]
   (let [val (as-str value)]
     (cond
-      (= "text" val)
-      (.setOutputFormatClass job TextOutputFormat)
+     (= "text" val)
+     (.setOutputFormatClass job TextOutputFormat)
 
-      (= "seq" val)
-      (.setOutputFormatClass job SequenceFileOutputFormat)
+     (= "seq" val)
+     (.setOutputFormatClass job SequenceFileOutputFormat)
 
-      :else
-      (.setOutputFormatClass job (Class/forName value)))))
+     :else
+     (.setOutputFormatClass job (Class/forName value)))))
 
 ;; If true, compress job output files.
 (defmethod conf :compress-output [^Job job key value]
@@ -302,7 +308,7 @@
     (conf job (keyword (replace-re #"^:|-" "" k)) v)))
 
 (defn print-usage []
-    (println "Usage: java -cp [jars...] clojure_hadoop.job [options...]
+  (println "Usage: java -cp [jars...] clojure_hadoop.job [options...]
 Required options are:
  -input     comma-separated input paths
  -output    output path

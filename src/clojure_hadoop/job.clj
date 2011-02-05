@@ -3,8 +3,12 @@
             [clojure-hadoop.imports :as imp]
             [clojure-hadoop.wrap :as wrap]
             [clojure-hadoop.config :as config]
-            [clojure-hadoop.load :as load])
-  (:import (org.apache.hadoop.util Tool))
+            [clojure-hadoop.load :as load]
+	    [clojure.stacktrace])
+  (:import (org.apache.hadoop.util Tool)
+	   (org.apache.hadoop.filecache DistributedCache)
+	   (org.apache.hadoop.fs Path)
+	   (java.io File))
   (:use [clojure.contrib.def :only (defvar-)]
         [clojure-hadoop.config :only (configuration)]
         [clojure-hadoop.context :only (with-context)]))
@@ -16,7 +20,7 @@
 (imp/import-mapreduce)
 (imp/import-mapreduce-lib)
 
-(def ^Job *job* nil)
+(def ^Configuration *config* nil)
 
 (gen/gen-job-classes)
 
@@ -35,15 +39,15 @@
    "reduce" wrap/clojure-reduce-reader
    "combine" wrap/clojure-reduce-reader})
 
-(defn set-job [job]
-  (alter-var-root (var *job*) (fn [_] job)))
+(defn set-config [config]
+  (alter-var-root (var *config*) (fn [_] config)))
 
 (defn- configure-functions
   "Preps the mapper or reducer with a Clojure function read from the
   job configuration.  Called from Mapper.configure and
   Reducer.configure."
   [type ^Configuration configuration]
-  ;; (set-job job)
+  (set-config configuration)
   (let [function (load/load-name (.get configuration (str "clojure-hadoop.job." type)))
         reader (if-let [v (.get configuration (str "clojure-hadoop.job." type ".reader"))]
                  (load/load-name v)
@@ -63,6 +67,7 @@
     (config/parse-command-line-args job args)
     (catch Exception e
       (prn e)
+      (clojure.stacktrace/print-cause-trace e)
       (config/print-usage)
       (System/exit 1))))
 
@@ -122,12 +127,11 @@
 
 (defn- handle-replace-option [^Job job]
   (when (= "true" (.get (configuration job) "clojure-hadoop.job.replace"))
-    (let [fs (FileSystem/get (configuration job))
-          output (FileOutputFormat/getOutputPath job)]
+    (let [output (FileOutputFormat/getOutputPath job)
+          fs (FileSystem/get (.toUri output) (configuration job))]
       (.delete fs output true))))
 
 (defn- set-default-config [^Job job]
-  (println "Setting default configuration")
   (doto job
     (.setJobName "clojure_hadoop.job")
     (.setOutputKeyClass Text)
@@ -144,11 +148,14 @@
   "Runs a Hadoop job given the job configuration map/fn."
   ([job]
      (run (clojure_hadoop.job.) job))
-  ([tool job]
-     (println "Running clojure-hadoop.job/run")
-     (doto job 
-       (handle-replace-option)
-       (.waitForCompletion true))))
+  ([tool job]     
+     (let [config (.getConf tool)]
+       (doto (Job. config)
+        (.setJarByClass (.getClass tool))
+        (set-default-config)
+        (config/conf :job job)
+        (handle-replace-option)
+        (.waitForCompletion true)))))
 
 ;;; TOOL METHODS
 
@@ -159,23 +166,21 @@
   (map (fn [url] (.getFile url))
        (.getURLs (java.net.URLClassLoader/getSystemClassLoader))))
 
+(defn configure-distributed-cache [job]
+  (println "Loading distributed cache")
+  (let [dir (new File "/home/hadoop/libcl")]
+    (if (.exists dir)
+      (doall
+       (map (fn [fname]
+	      (DistributedCache/addFileToClassPath
+	       (new Path (str "/libcl/" fname)) job))
+	    (.list dir))))))
+
 (defn tool-run [^Tool this args]
-  (println "Running clojure-hadoop.job/tool-run")
   (doto (Job. (.getConf this))
     (.setJarByClass (.getClass this))
     (set-default-config)
+    (configure-distributed-cache)
     (parse-command-line args)
-;;    (println (get-classpath))
     (run))
-  0)
-
-(defn interactive [job args]
-  (let [this (clojure_hadoop.job.)
-	obj (Job. (.getConf this))]
-    (doto obj
-      (.setJarByClass (.getClass this))
-      (set-default-config)
-      (parse-command-line args))
-;;    (swank.core/break)
-    (run obj))
   0)

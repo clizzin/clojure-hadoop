@@ -70,7 +70,7 @@
   []
   `(do
      (defn ~'tool-getConf [~'_]
-       (or ~'clojure-hadoop.job/*job* (Configuration.)))
-     (defn ~'tool-setConf [~'_ ~'jobconf]
-       (clojure-hadoop.job/set-job ~'jobconf))))
+       (or ~'clojure-hadoop.job/*config* (Configuration.)))
+     (defn ~'tool-setConf [~'_ ~'config]
+       (clojure-hadoop.job/set-config ~'config))))
 
